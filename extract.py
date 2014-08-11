@@ -71,8 +71,10 @@ class PebbleFunction(object):
                     see.remove(child)
 
 
-        self.description = self.handle_desc(detail) or self.handle_desc(node.find('briefdescription'))
-
+        detailed = self.handle_desc(detail)
+        brief = self.handle_desc(node.find('briefdescription'))
+        self.description = detailed if len(detailed) > len(brief) else brief
+        print self.description
 
 
     @classmethod
@@ -80,7 +82,7 @@ class PebbleFunction(object):
         if tag is None:
             return ''
         if len(tag.getchildren()) > 0:
-            return cls.unref(tag.getchildren()[0])
+            return (tag.text or '') + cls.unref(tag.getchildren()[0]) + (tag.getchildren()[0].tail or '')
         else:
             return tag.text
 
@@ -88,7 +90,11 @@ class PebbleFunction(object):
     def handle_desc(cls, desc):
         if desc is None:
             return ''
-        return re.sub(r'([a-zA-Z0-9]+_[a-zA-Z0-9_]+(?:\(\))?)', r'<code>\1</code>', ''.join(desc.itertext()).strip())
+        text = re.sub(r'([a-zA-Z0-9]+_[a-zA-Z0-9_]+(?:\(\))?)', r'<code>\1</code>', ''.join(desc.itertext()).strip())
+        if text.strip(' \t\r\n<p>') == '':
+            return ''
+        else:
+            return text
 
     def __str__(self):
         return "%s %s(%s)" % (self.type, self.name, ', '.join(['%s %s' % (self.params[x]['type'], self.params[x]['name']) for x in self.params]))
@@ -128,7 +134,7 @@ def to_json(stuff):
             'warning': fn.warning,
             'kind': fn.kind,
         }
-    return json.dumps(result, indent=4)
+    return json.dumps(result, indent=4, sort_keys=True)
 
 def pretty_print():
     for fn in do_something_useful():
